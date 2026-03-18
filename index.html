@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+  <title>Snakes and Ladders</title>
+  </head>
+  <style>
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  margin: 0;
+  padding: 10px;
+  font-family: 'Comic Neue', cursive;
+  background: #f0f0f0;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+h1 {
+  margin: 10px 0;
+  font-size: clamp(20px, 5vw, 32px);
+}
+/* MENU CONTAINER */
+.menu {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+/* BUTTON */
+#menuBtn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  font-size: 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* DROPDOWN PANEL */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: white;
+  border-radius: 10px;
+  margin-top: 5px;
+  padding: 10px;
+
+  display: none; /* hidden by default */
+  z-index: 999;
+}
+
+/* SHOW STATE */
+.dropdown.show {
+  display: block;
+}
+
+/* INPUTS */
+input, select {
+  padding: 6px;
+  margin: 5px;
+  width: 45%;
+}
+
+#game {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+#board {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Tokens scale with board */
+.token {
+  width: 6%;
+  max-width: 30px;
+  position: absolute;
+  transition: all 0.3s ease;
+  left: 0;
+  top: 90%;
+}
+
+/* Controls */
+#controls {
+  margin-top: 15px;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Dice responsive */
+#dice {
+  width: 70px;
+  max-width: 20vw;
+}
+
+/* Status text */
+#status {
+  font-size: clamp(14px, 4vw, 18px);
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Buttons */
+button {
+  padding: 10px 15px;
+  font-size: clamp(14px, 4vw, 16px);
+  border-radius: 8px;
+  border: none;
+  background: pink;
+  cursor: pointer;
+}
+
+/* Names box */
+#names {
+  margin: 10px auto;
+  width: 100%;
+  max-width: 500px;
+  border: 2px solid pink;
+  border-radius: 10px;
+  padding: 10px;
+  background-color: #fff;
+}
+
+input, select {
+  padding: 6px;
+  margin: 5px;
+  width: 45%;
+  max-width: 150px;
+}
+
+/* Trophy responsive */
+#trophy {
+  display: none;
+  position: absolute;
+  width: 40%;
+  max-width: 250px;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+/* Animations */
+@keyframes jump {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-20px); }
+  60%  { transform: translateY(0); }
+  100% { transform: translateY(0); }
+}
+
+.token.jump {
+  animation: jump 1s ease;
+}
+
+@keyframes trophyPop {
+  0%   { transform: translateX(-50%) scale(0); opacity: 0; }
+  60%  { transform: translateX(-50%) scale(1.2); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); }
+}
+</style>
+
+<body>
+    <h1> Snakes and Ladders</h1>
+
+  <div class="menu">
+  <button id="menuBtn" onclick="toggleMenu()">⚙️ Settings</button>
+
+  <!-- DROPDOWN CONTENT -->
+  <div id="names" class="dropdown">
+    <label>
+      Player 1 Name:
+      <input id="name1" type="text" value="Player 1">
+      Color:
+      <select id="color1">
+        <option value="pawnpurple.png">Purple</option>
+        <option value="pawnpink.png">Pink</option>
+        <option value="pawncyan.png">Cyan</option>
+        <option value="pawnblue.png">Blue</option>
+      </select>
+    </label>
+    <br>
+    <label>
+      Player 2 Name:
+      <input id="name2" type="text" value="Player 2">
+      Color:
+      <select id="color2">
+        <option value="pawnpurple.png">Purple</option>
+        <option value="pawnpink.png">Pink</option>
+        <option value="pawncyan.png">Cyan</option>
+        <option value="pawnblue.png">Blue</option>
+      </select>
+    </label>
+    <br>
+    <button onclick="setNames()">Set Names & Colors</button>
+  </div>
+</div>
+
+  <div id="game">
+    <img id="board" src="snl_board.jpg" alt="Board">
+    <img id="player1" class="token" src="pawnpink.png">
+    <img id="player2" class="token" src="pawnpurple.png">
+    <!-- Trophy inside the board -->
+    <img id="trophy" src="trophy.png" alt="Trophy">
+  </div>
+
+  <div id="controls">
+    <img id="dice" src="1_dots.png" width="80">
+    <p id="status">Player 1's turn</p>
+    <button id="rollBtn" onclick="rollDice()">Roll Dice</button>
+  </div>
+</body>
+  <script>
+    let positions = [0, 0];
+    let currentPlayer = 0;
+    let playerNames = ["Player 1", "Player 2"];
+
+    const diceSound = new Audio("dice.mp3");
+    const jumpSound = new Audio("jump.mp3");
+    const snakeSound = new Audio("snake.mp3");
+    const ladderSound = new Audio("ladder.mp3");
+    const winSound = new Audio("winner.mp3"); // Victory sound
+
+    const snakesLadders = {
+      4: 15, 8: 31, 17: 7, 20: 38,
+      28: 84, 40: 42, 51: 67, 53: 34,
+      62: 19, 63: 81, 64: 60, 71: 91,
+      87: 24, 93: 69, 95: 76, 99: 61
+    };
+
+    function setNames() {
+      playerNames[0] = document.getElementById("name1").value || "Player 1";
+      playerNames[1] = document.getElementById("name2").value || "Player 2";
+      document.getElementById("player1").src = document.getElementById("color1").value;
+      document.getElementById("player2").src = document.getElementById("color2").value;
+      document.getElementById("status").textContent = playerNames[0] + "'s turn";
+    }
+
+    function rollDice() {
+      document.getElementById("status").textContent = "Rolling...";
+      diceSound.play();
+      let roll = Math.floor(Math.random() * 6) + 1;
+
+      setTimeout(() => {
+        document.getElementById("dice").src = roll + "_dots.png";
+        document.getElementById("status").textContent =
+          playerNames[currentPlayer] + " rolled: " + roll;
+
+        let oldPos = positions[currentPlayer];
+        let newPos = oldPos + roll;
+        if (newPos > 100) newPos = 100;
+
+        animateStepMove(currentPlayer, oldPos, newPos, () => {
+          if (snakesLadders[newPos]) {
+            let endPos = snakesLadders[newPos];
+            positions[currentPlayer] = endPos; // update immediately
+
+            if (endPos > newPos) {
+              // Ladder
+              setTimeout(() => {
+                ladderSound.currentTime = 0;
+                ladderSound.play();
+                animateDirectClimb(currentPlayer, endPos, () => {
+                  ladderSound.pause();
+                  endTurn(roll);
+                });
+              }, 500);
+            } else {
+              // Snake
+              setTimeout(() => {
+                snakeSound.currentTime = 0;
+                snakeSound.play();
+                animateDirectSlide(currentPlayer, endPos, () => {
+                  snakeSound.pause();
+                  endTurn(roll);
+                });
+              }, 500);
+            }
+          } else {
+            positions[currentPlayer] = newPos;
+            endTurn(roll);
+          }
+        });
+      }, 2500);
+    }
+
+    function animateStepMove(player, start, end, callback) {
+      let step = start < end ? 1 : -1;
+      let current = start;
+      let interval = setInterval(() => {
+        current += step;
+        moveToken(player, current);
+
+        let token = document.getElementById(player===0 ? "player1":"player2");
+        token.classList.remove("jump");
+        void token.offsetWidth;
+        token.classList.add("jump");
+
+        jumpSound.currentTime = 0;
+        jumpSound.play();
+
+        if (current === end) {
+          clearInterval(interval);
+          callback();
+        }
+      }, 1000);
+    }
+
+    function animateDirectClimb(player, square, callback) {
+      moveToken(player, square);
+      let token = document.getElementById(player===0 ? "player1":"player2");
+      token.classList.remove("jump");
+      void token.offsetWidth;
+      token.classList.add("jump");
+      setTimeout(() => {
+        token.classList.remove("jump");
+        callback();
+      }, 2000);
+    }
+
+    function animateDirectSlide(player, square, callback) {
+      moveToken(player, square);
+      let token = document.getElementById(player===0 ? "player1":"player2");
+      token.classList.remove("jump");
+      void token.offsetWidth;
+      token.classList.add("jump");
+      setTimeout(() => {
+        token.classList.remove("jump");
+        callback();
+      }, 2000);
+    }
+
+    function moveToken(player, position) {
+  let token = document.getElementById(player === 0 ? "player1" : "player2");
+
+  if (position === 0) {
+    token.style.left = "0px";
+    token.style.top = "450px";
+    return;
+  }
+
+  // Determine row and column based on position
+  let row = Math.floor((position - 1) / 10);   // which row (0 = bottom)
+  let col = (position - 1) % 10;               // which column in that row
+
+  // Reverse direction every other row (zig-zag pattern)
+  if (row % 2 === 1) {
+    col = 9 - col;
+  }
+
+  // Calculate pixel coordinates
+  let x = col * 50;              // 50px per square horizontally
+  let y = (9 - row) * 50;        // 50px per row vertically, starting from bottom
+
+  // Apply coordinates to token
+  token.style.left = x + "px";
+  token.style.top = y + "px";
+}
+
+    function endTurn(roll) {
+      if (positions[currentPlayer] === 100) {
+        document.getElementById("status").textContent = playerNames[currentPlayer] + " wins!";
+        showTrophy();
+        winSound.play();
+        document.getElementById("rollBtn").disabled = true;
+      } else {
+        if (roll !== 6) {
+          currentPlayer = 1 - currentPlayer; // switch player
+        }
+        document.getElementById("status").textContent = playerNames[currentPlayer] + "'s turn";
+      }
+    }
+
+    function showTrophy() {
+      const trophy = document.getElementById("trophy");
+      trophy.style.display = "block";
+      trophy.style.animation = "trophyPop 1s ease";
+    }
+function toggleMenu() {
+  document.getElementById("names").classList.toggle("show");
+}
+
+</script>
+</body>
+</html>
